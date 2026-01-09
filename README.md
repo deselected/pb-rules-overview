@@ -2,7 +2,7 @@
 
 A drop-in admin page to quickly see all your [PocketBase](https://pocketbase.io/docs/api-rules-and-filters/) API rules in one place, eg for a security audit or sanity check.
 
-
+![image](https://github.com/user-attachments/assets/c7efb93d-b07c-4752-b205-408bc818581f)
 
 **Contents**
 
@@ -39,3 +39,4 @@ Piggybacks the CSS and auth of the existing PB admin dashboard, otherwise no dep
 # Contact
 
 Raise an issue/discussion in this repo.
+
