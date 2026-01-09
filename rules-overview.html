@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<title>API Rules Overview</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<link rel="shortcut icon" type="image/png" href="../_/images/favicon/favicon.png">
+	</head>
+	<body>
+
+		<div id="app">
+			<div class="app-layout">
+				<aside class="app-sidebar">
+					<a class="logo logo-sm"><img src="../_/images/logo.svg" alt="PocketBase logo" width="40" height="40"></a> 
+					<nav class="main-menu">
+						<a class="menu-item current-route" aria-label="Rules" title="Rules"><i class="ri-lock-line"></i></a>
+					</nav> 
+				</aside>
+				<div class="app-body">
+					<div class="page-wrapper">
+						<main class="page-content">
+							<header class="page-header">
+								<nav class="breadcrumbs">
+									<div class="breadcrumb-item">API Rules Overview</div>
+								</nav> 
+							</header>
+							<table class="table">
+								<thead>
+									<tr>
+										<th>Collection</th>
+										<th>List/Search</th>
+										<th>View</th>
+										<th>Create</th>
+										<th>Update</th>
+										<th>Delete</th>
+									</tr>
+								</thead>
+								<tbody>
+								</tbody>
+							</table>
+						</main>
+						<footer class="page-footer">
+							<a href="https://pocketbase.io/docs/api-rules-and-filters/" target="_blank" rel="noopener noreferrer"><i class="ri-book-open-line txt-sm"></i> <span class="txt">PB Docs</span></a>
+							<span class="delimiter">|</span>
+							<a href="https://github.com/deselected/pb-rules-overview" target="_blank" rel="noopener noreferrer"> <span class="txt">pb-rules-overview v0.1</span></a>
+						</footer>
+					</div>
+					<div class="toasts-wrapper"></div>
+				</div>
+			</div>
+		</div>
+
+		<script type="text/javascript">	
+			//piggyback the superuser token from the /_ dashboard
+			const SUPERUSER_TOKEN = JSON.parse(localStorage.getItem('__pb_superuser_auth__'))?.token
+			if (!SUPERUSER_TOKEN || JSON.parse(atob(SUPERUSER_TOKEN.split('.')[1])).exp < Math.round(Date.now()/1000))
+				window.location.href = window.location.origin + '/_/#/login'
+
+			init()
+			async function init()
+			{
+				//piggyback css files from the /_ dashboard
+				let piggybackDOM = new DOMParser().parseFromString(await (await send('/_')).text(), "text/html")
+				for (let element of piggybackDOM.head.querySelectorAll('link[rel="stylesheet"]'))
+				{
+					element.href = element.href.replace(window.location.origin, window.location.origin+"/_")
+					document.head.append(element)
+				}
+
+				let response = await send('/api/collections?perPage=1000')
+
+				if (response.ok)
+				{
+					let table = document.querySelector('tbody')
+					for (let collection of (await response.json()).items)
+					{
+						if (collection.name.startsWith('_')) //ignore system collections
+							continue
+
+						let row = document.createElement('tr')
+						let column = document.createElement('td')
+						if (collection.type == 'base')
+							column.innerHTML += '<i class="ri-folder-2-line" title="Base Collection"></i> '
+						else if (collection.type == 'view')
+							column.innerHTML += '<i class="ri-table-line" title="View Collection"></i> '
+						else if (collection.type == 'auth')
+							column.innerHTML += '<i class="ri-group-line" title="Auth Collection"></i> '
+						column.innerHTML += `<a href="/_/#/collections?collection=${collection.id}">${collection.name}</a>`
+						row.append(column)
+
+						addRule(row, collection.listRule)
+						addRule(row, collection.viewRule)
+						addRule(row, collection.createRule)
+						addRule(row, collection.updateRule)
+						addRule(row, collection.deleteRule)
+
+						table.append(row)
+					}
+
+					function addRule(row, rule)
+					{
+						let column = document.createElement('td')
+						if (rule == null)
+						{
+							column.innerHTML = '<i class="ri-lock-line"></i> Superuser Only'
+							column.title = 'Superuser Only'
+							column.style.background = 'var(--successAltColor)'
+						}
+						else if (rule == '')
+						{
+							column.innerHTML = '<i class="ri-lock-unlock-line"></i> Public'
+							column.title = 'Public'
+							column.style.background = 'var(--dangerAltColor)'
+						}
+						else
+						{
+							column.innerText = rule
+							column.title = rule
+							//column.style.background = 'var(--warningAltColor)'
+						}
+						row.append(column)
+					}
+				} 
+
+			}
+
+			async function send(path, opts={})
+			{
+				if (!opts.headers)
+					opts.headers = {'Content-Type': 'application/json'}
+				opts.headers['Authorization'] = SUPERUSER_TOKEN
+				try 
+				{
+					let response = await fetch(window.location.origin+path, opts)
+					if (!response.ok)
+						toastAlert(`${response.status} - ${(await response.json()).message}`)
+					return response
+				}
+				catch(e)
+				{
+					toastAlert(e)
+				}
+			}
+
+			function toastAlert(message)
+			{
+				document.querySelector('.toasts-wrapper').append(elementFromString(`
+					<div class="alert txt-break alert-danger">
+						<div class="icon"><i class="ri-alert-line"></i></div> 
+						<div class="content">${message}</div> 
+						<button type="button" class="close" onClick="clearToasts()"><i class="ri-close-line"></i></button> 
+					</div>
+				`))
+				setTimeout(function() {document.querySelector('.toasts-wrapper').innerHTML = ''}, 5000)
+			}
+
+			function elementFromString(string)
+			{
+				var div = document.createElement("div");
+				div.innerHTML = string;
+				return div.firstElementChild
+			}
+		</script>
+	</body>
+</html>
